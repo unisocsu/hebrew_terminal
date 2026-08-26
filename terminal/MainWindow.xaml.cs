@@ -20,15 +20,34 @@ namespace RTLTerminal
 
         public MainWindow()
         {
-            InitializeComponent();
-            this.Loaded += MainWindow_Loaded;
+            try
+            {
+                InitializeComponent();
+                this.Loaded += MainWindow_Loaded;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error in constructor: {ex.Message}\n\n{ex.StackTrace}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            StartCmdProcess();
-            InputBox.Focus();
-            AppendOutput("RTL Terminal started. Type 'exit' to close.\n", Brushes.White);
+            try
+            {
+                AppendOutput("RTL Terminal starting...\n", Brushes.Gray);
+                AppendOutput("Launching cmd.exe...\n", Brushes.Gray);
+                
+                StartCmdProcess();
+                
+                InputBox.Focus();
+                AppendOutput("✓ RTL Terminal ready. Type commands and press Enter.\n", Brushes.Green);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error in MainWindow_Loaded: {ex.Message}\n\n{ex.StackTrace}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void StartCmdProcess()
@@ -55,7 +74,10 @@ namespace RTLTerminal
             }
             catch (Exception ex)
             {
-                AppendOutput($"Error starting cmd.exe: {ex.Message}\n", Brushes.Red);
+                _isProcessRunning = false;
+                AppendOutput($"❌ Error starting cmd.exe: {ex.Message}\n", Brushes.Red);
+                AppendOutput($"Details: {ex.StackTrace}\n", Brushes.Red);
+                MessageBox.Show($"Failed to start cmd.exe:\n\n{ex.Message}", "Process Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
