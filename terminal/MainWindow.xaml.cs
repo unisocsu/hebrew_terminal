@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,10 +13,21 @@ namespace RTLTerminal
 {
     public partial class MainWindow : Window
     {
-        [DllImport("kernel32.dll")]
-        private static extern bool AttachConsole(int dwProcessId);
-        
-        private const int ATTACH_PARENT_PROCESS = -1;
+        private static readonly string LogPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "RTLTerminal",
+            "debug.log"
+        );
+
+        private static void WriteLog(string message)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LogPath));
+                File.AppendAllText(LogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {message}\n");
+            }
+            catch { }
+        }
         private Process _cmdProcess;
         private StreamWriter _processInput;
         private bool _isProcessRunning = false;
@@ -27,21 +37,20 @@ namespace RTLTerminal
         {
             try
             {
-                // Attach to console for debugging
-                AttachConsole(ATTACH_PARENT_PROCESS);
-                Console.WriteLine("[DEBUG] MainWindow constructor started");
+                WriteLog("=== RTLTerminal Started ===");
+                WriteLog("MainWindow constructor started");
                 
                 InitializeComponent();
-                Console.WriteLine("[DEBUG] InitializeComponent completed");
+                WriteLog("InitializeComponent completed");
                 
                 this.Loaded += MainWindow_Loaded;
-                Console.WriteLine("[DEBUG] Loaded event handler attached");
+                WriteLog("Loaded event handler attached");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Constructor exception: {ex.Message}");
-                Console.WriteLine($"[ERROR] StackTrace: {ex.StackTrace}");
-                MessageBox.Show($"Error in constructor: {ex.Message}\n\n{ex.StackTrace}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                WriteLog($"ERROR in constructor: {ex.Message}");
+                WriteLog($"StackTrace: {ex.StackTrace}");
+                MessageBox.Show($"Error in constructor: {ex.Message}\n\nCheck: %AppData%\\RTLTerminal\\debug.log", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
         }
@@ -50,28 +59,29 @@ namespace RTLTerminal
         {
             try
             {
-                Console.WriteLine("[DEBUG] MainWindow_Loaded started");
+                WriteLog("MainWindow_Loaded started");
                 
                 AppendOutput("RTL Terminal starting...\n", Brushes.Gray);
-                Console.WriteLine("[DEBUG] Append output 1");
+                WriteLog("Appended: RTL Terminal starting");
                 
                 AppendOutput("Launching cmd.exe...\n", Brushes.Gray);
-                Console.WriteLine("[DEBUG] Append output 2");
+                WriteLog("Appended: Launching cmd.exe");
                 
+                WriteLog("About to call StartCmdProcess");
                 StartCmdProcess();
-                Console.WriteLine("[DEBUG] StartCmdProcess completed");
+                WriteLog("StartCmdProcess completed");
                 
                 InputBox.Focus();
-                Console.WriteLine("[DEBUG] Input focus set");
+                WriteLog("Input focus set");
                 
                 AppendOutput("✓ RTL Terminal ready. Type commands and press Enter.\n", Brushes.Green);
-                Console.WriteLine("[DEBUG] MainWindow_Loaded completed successfully");
+                WriteLog("MainWindow_Loaded completed successfully");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] MainWindow_Loaded exception: {ex.Message}");
-                Console.WriteLine($"[ERROR] StackTrace: {ex.StackTrace}");
-                MessageBox.Show($"Error in MainWindow_Loaded: {ex.Message}\n\n{ex.StackTrace}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                WriteLog($"ERROR in MainWindow_Loaded: {ex.Message}");
+                WriteLog($"StackTrace: {ex.StackTrace}");
+                MessageBox.Show($"Error in MainWindow_Loaded: {ex.Message}\n\nCheck: %AppData%\\RTLTerminal\\debug.log", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -79,7 +89,10 @@ namespace RTLTerminal
         {
             try
             {
+                WriteLog("StartCmdProcess: Creating Process object");
                 _cmdProcess = new Process();
+                
+                WriteLog("StartCmdProcess: Setting up StartInfo");
                 _cmdProcess.StartInfo.FileName = "cmd.exe";
                 _cmdProcess.StartInfo.UseShellExecute = false;
                 _cmdProcess.StartInfo.RedirectStandardInput = true;
@@ -89,20 +102,27 @@ namespace RTLTerminal
                 _cmdProcess.StartInfo.StandardOutputEncoding = Encoding.UTF8;
                 _cmdProcess.StartInfo.StandardErrorEncoding = Encoding.UTF8;
 
+                WriteLog("StartCmdProcess: Starting cmd.exe");
                 _cmdProcess.Start();
+                WriteLog("StartCmdProcess: cmd.exe started successfully");
+                
                 _processInput = _cmdProcess.StandardInput;
                 _isProcessRunning = true;
 
+                WriteLog("StartCmdProcess: Starting output reader threads");
                 // Start reading output in background threads
                 Task.Run(() => ReadStandardOutput());
                 Task.Run(() => ReadStandardError());
+                WriteLog("StartCmdProcess: Reader threads started");
             }
             catch (Exception ex)
             {
+                WriteLog($"ERROR in StartCmdProcess: {ex.Message}");
+                WriteLog($"StackTrace: {ex.StackTrace}");
                 _isProcessRunning = false;
                 AppendOutput($"❌ Error starting cmd.exe: {ex.Message}\n", Brushes.Red);
                 AppendOutput($"Details: {ex.StackTrace}\n", Brushes.Red);
-                MessageBox.Show($"Failed to start cmd.exe:\n\n{ex.Message}", "Process Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Failed to start cmd.exe:\n\n{ex.Message}\n\nCheck: %AppData%\\RTLTerminal\\debug.log", "Process Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
