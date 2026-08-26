@@ -30,7 +30,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: RTLTerminal-build
-        path: terminal/bin/Release/net6.0-windows/
+        path: terminal/bin/Release/net8.0-windows/
         retention-days: 30
 
   release:

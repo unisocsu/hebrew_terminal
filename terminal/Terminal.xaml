@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="RTL Terminal" Height="600" Width="800"
         Background="#1e1e1e" Foreground="#d4d4d4"
-        FontFamily="Consolas" FontSize="12">
+        FontFamily="Consolas" FontSize="12"
+        Closing="Window_Closing">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
