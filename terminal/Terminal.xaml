@@ -18,10 +18,9 @@
                      FontFamily="Consolas"
                      FontSize="12"
                      VerticalScrollBarVisibility="Auto"
+                     AllowDrop="False"
                      IsReadOnly="True"
-                     Padding="10"
-                     TextWrapping="Wrap"
-                     AllowDrop="False">
+                     Padding="10">
             <RichTextBox.Resources>
                 <Style TargetType="Paragraph">
                     <Setter Property="Margin" Value="0"/>
