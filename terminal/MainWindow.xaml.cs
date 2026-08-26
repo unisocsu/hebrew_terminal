@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -13,6 +14,10 @@ namespace RTLTerminal
 {
     public partial class MainWindow : Window
     {
+        [DllImport("kernel32.dll")]
+        private static extern bool AttachConsole(int dwProcessId);
+        
+        private const int ATTACH_PARENT_PROCESS = -1;
         private Process _cmdProcess;
         private StreamWriter _processInput;
         private bool _isProcessRunning = false;
@@ -22,11 +27,20 @@ namespace RTLTerminal
         {
             try
             {
+                // Attach to console for debugging
+                AttachConsole(ATTACH_PARENT_PROCESS);
+                Console.WriteLine("[DEBUG] MainWindow constructor started");
+                
                 InitializeComponent();
+                Console.WriteLine("[DEBUG] InitializeComponent completed");
+                
                 this.Loaded += MainWindow_Loaded;
+                Console.WriteLine("[DEBUG] Loaded event handler attached");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] Constructor exception: {ex.Message}");
+                Console.WriteLine($"[ERROR] StackTrace: {ex.StackTrace}");
                 MessageBox.Show($"Error in constructor: {ex.Message}\n\n{ex.StackTrace}", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
@@ -36,16 +50,27 @@ namespace RTLTerminal
         {
             try
             {
+                Console.WriteLine("[DEBUG] MainWindow_Loaded started");
+                
                 AppendOutput("RTL Terminal starting...\n", Brushes.Gray);
+                Console.WriteLine("[DEBUG] Append output 1");
+                
                 AppendOutput("Launching cmd.exe...\n", Brushes.Gray);
+                Console.WriteLine("[DEBUG] Append output 2");
                 
                 StartCmdProcess();
+                Console.WriteLine("[DEBUG] StartCmdProcess completed");
                 
                 InputBox.Focus();
+                Console.WriteLine("[DEBUG] Input focus set");
+                
                 AppendOutput("✓ RTL Terminal ready. Type commands and press Enter.\n", Brushes.Green);
+                Console.WriteLine("[DEBUG] MainWindow_Loaded completed successfully");
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] MainWindow_Loaded exception: {ex.Message}");
+                Console.WriteLine($"[ERROR] StackTrace: {ex.StackTrace}");
                 MessageBox.Show($"Error in MainWindow_Loaded: {ex.Message}\n\n{ex.StackTrace}", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
