@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -26,8 +25,13 @@ namespace RTLTerminal
                 Directory.CreateDirectory(Path.GetDirectoryName(LogPath));
                 File.AppendAllText(LogPath, $"[{DateTime.Now:HH:mm:ss.fff}] {message}\n");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // Silent fail
+                MessageBox.Show($"Log write failed: {ex.Message}");
+            }
         }
+
         private Process _cmdProcess;
         private StreamWriter _processInput;
         private bool _isProcessRunning = false;
@@ -37,62 +41,49 @@ namespace RTLTerminal
         {
             try
             {
-                WriteLog("=== RTLTerminal Started ===");
-                WriteLog("MainWindow constructor started");
-                
+                WriteLog("=== APP START ===");
+                WriteLog("Constructor: Calling InitializeComponent");
                 InitializeComponent();
-                WriteLog("InitializeComponent completed");
+                WriteLog("Constructor: InitializeComponent OK");
                 
+                WriteLog("Constructor: Attaching Loaded event");
                 this.Loaded += MainWindow_Loaded;
-                WriteLog("Loaded event handler attached");
+                WriteLog("Constructor: Done");
             }
             catch (Exception ex)
             {
-                WriteLog($"ERROR in constructor: {ex.Message}");
-                WriteLog($"StackTrace: {ex.StackTrace}");
-                MessageBox.Show($"Error in constructor: {ex.Message}\n\nCheck: %AppData%\\RTLTerminal\\debug.log", "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                throw;
+                WriteLog($"CONSTRUCTOR ERROR: {ex.Message}");
+                WriteLog($"STACKTRACE: {ex.StackTrace}");
+                MessageBox.Show($"Constructor Error:\n{ex.Message}\n\nLog: {LogPath}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            WriteLog("MainWindow_Loaded: Started");
             try
             {
-                WriteLog("MainWindow_Loaded started");
-                
-                AppendOutput("RTL Terminal starting...\n", Brushes.Gray);
-                WriteLog("Appended: RTL Terminal starting");
-                
-                AppendOutput("Launching cmd.exe...\n", Brushes.Gray);
-                WriteLog("Appended: Launching cmd.exe");
-                
-                WriteLog("About to call StartCmdProcess");
+                WriteLog("MainWindow_Loaded: Calling StartCmdProcess");
                 StartCmdProcess();
-                WriteLog("StartCmdProcess completed");
+                WriteLog("MainWindow_Loaded: StartCmdProcess OK");
                 
                 InputBox.Focus();
-                WriteLog("Input focus set");
-                
-                AppendOutput("✓ RTL Terminal ready. Type commands and press Enter.\n", Brushes.Green);
-                WriteLog("MainWindow_Loaded completed successfully");
+                WriteLog("MainWindow_Loaded: Done");
             }
             catch (Exception ex)
             {
-                WriteLog($"ERROR in MainWindow_Loaded: {ex.Message}");
-                WriteLog($"StackTrace: {ex.StackTrace}");
-                MessageBox.Show($"Error in MainWindow_Loaded: {ex.Message}\n\nCheck: %AppData%\\RTLTerminal\\debug.log", "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                WriteLog($"LOADED ERROR: {ex.Message}");
+                WriteLog($"STACKTRACE: {ex.StackTrace}");
+                MessageBox.Show($"Loaded Error:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private void StartCmdProcess()
         {
+            WriteLog("StartCmdProcess: Creating Process");
             try
             {
-                WriteLog("StartCmdProcess: Creating Process object");
                 _cmdProcess = new Process();
-                
-                WriteLog("StartCmdProcess: Setting up StartInfo");
                 _cmdProcess.StartInfo.FileName = "cmd.exe";
                 _cmdProcess.StartInfo.UseShellExecute = false;
                 _cmdProcess.StartInfo.RedirectStandardInput = true;
@@ -104,30 +95,28 @@ namespace RTLTerminal
 
                 WriteLog("StartCmdProcess: Starting cmd.exe");
                 _cmdProcess.Start();
-                WriteLog("StartCmdProcess: cmd.exe started successfully");
+                WriteLog("StartCmdProcess: cmd.exe started");
                 
                 _processInput = _cmdProcess.StandardInput;
                 _isProcessRunning = true;
 
-                WriteLog("StartCmdProcess: Starting output reader threads");
-                // Start reading output in background threads
+                WriteLog("StartCmdProcess: Starting reader threads");
                 Task.Run(() => ReadStandardOutput());
                 Task.Run(() => ReadStandardError());
-                WriteLog("StartCmdProcess: Reader threads started");
+                WriteLog("StartCmdProcess: OK");
             }
             catch (Exception ex)
             {
-                WriteLog($"ERROR in StartCmdProcess: {ex.Message}");
-                WriteLog($"StackTrace: {ex.StackTrace}");
+                WriteLog($"STARTCMD ERROR: {ex.Message}");
+                WriteLog($"STACKTRACE: {ex.StackTrace}");
                 _isProcessRunning = false;
-                AppendOutput($"❌ Error starting cmd.exe: {ex.Message}\n", Brushes.Red);
-                AppendOutput($"Details: {ex.StackTrace}\n", Brushes.Red);
-                MessageBox.Show($"Failed to start cmd.exe:\n\n{ex.Message}\n\nCheck: %AppData%\\RTLTerminal\\debug.log", "Process Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
             }
         }
 
         private void ReadStandardOutput()
         {
+            WriteLog("ReadStandardOutput: Thread started");
             try
             {
                 while (_isProcessRunning && !_cmdProcess.StandardOutput.EndOfStream)
@@ -135,18 +124,23 @@ namespace RTLTerminal
                     string line = _cmdProcess.StandardOutput.ReadLine();
                     if (line != null)
                     {
-                        Dispatcher.Invoke(() => AppendOutput(line + "\n", Brushes.White));
+                        WriteLog($"OUTPUT: {line}");
+                        Dispatcher.Invoke(() => 
+                        {
+                            OutputBox.Text += line + "\n";
+                        });
                     }
                 }
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => AppendOutput($"Read error: {ex.Message}\n", Brushes.Red));
+                WriteLog($"ReadOutput ERROR: {ex.Message}");
             }
         }
 
         private void ReadStandardError()
         {
+            WriteLog("ReadStandardError: Thread started");
             try
             {
                 while (_isProcessRunning && !_cmdProcess.StandardError.EndOfStream)
@@ -154,13 +148,17 @@ namespace RTLTerminal
                     string line = _cmdProcess.StandardError.ReadLine();
                     if (line != null)
                     {
-                        Dispatcher.Invoke(() => AppendOutput(line + "\n", Brushes.Yellow));
+                        WriteLog($"ERROR: {line}");
+                        Dispatcher.Invoke(() => 
+                        {
+                            OutputBox.Text += "[ERROR] " + line + "\n";
+                        });
                     }
                 }
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => AppendOutput($"Error stream read error: {ex.Message}\n", Brushes.Red));
+                WriteLog($"ReadError ERROR: {ex.Message}");
             }
         }
 
@@ -169,42 +167,25 @@ namespace RTLTerminal
             if (e.Key == Key.Return)
             {
                 string command = InputBox.Text;
-                AppendOutput($"> {command}\n", Brushes.Cyan);
-
+                WriteLog($"USER INPUT: {command}");
+                
                 try
                 {
                     _processInput.WriteLine(command);
                     _processInput.Flush();
+                    InputBox.Clear();
+                    e.Handled = true;
                 }
                 catch (Exception ex)
                 {
-                    AppendOutput($"Error sending command: {ex.Message}\n", Brushes.Red);
+                    WriteLog($"INPUT ERROR: {ex.Message}");
                 }
-
-                InputBox.Clear();
-                e.Handled = true;
-            }
-        }
-
-        private void AppendOutput(string text, Brush color)
-        {
-            lock (_outputLock)
-            {
-                Paragraph paragraph = new Paragraph();
-                Run run = new Run(text);
-                run.Foreground = color;
-                paragraph.Inlines.Add(run);
-                
-                // תמיכה בـ RTL - WPF יטפל באלגוריתם Bidi אוטומטית
-                OutputBox.Document.Blocks.Add(paragraph);
-                
-                // Auto-scroll to bottom
-                OutputBox.ScrollToEnd();
             }
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            WriteLog("Window_Closing: Closing");
             _isProcessRunning = false;
             try
             {
@@ -215,6 +196,7 @@ namespace RTLTerminal
                 _cmdProcess?.Kill();
             }
             catch { }
+            WriteLog("Window_Closing: Done");
         }
     }
 }
